@@ -1,0 +1,2678 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schemahanterare</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #f8f6f1;
+            --bg-secondary: #ffffff;
+            --bg-accent: #1a1a2e;
+            --text-primary: #1a1a2e;
+            --text-secondary: #5a5a7a;
+            --accent: #e63946;
+            --accent-light: #ff6b7a;
+            --border: #e0ddd5;
+            --success: #2a9d8f;
+            --shadow: rgba(26, 26, 46, 0.08);
+        }
+
+        .dark {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-accent: #2a2a4e;
+            --text-primary: #f8f6f1;
+            --text-secondary: #a0a0b8;
+            --border: #3a3a5e;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* Hamburger Menu */
+        .hamburger {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1000;
+            width: 44px;
+            height: 44px;
+            background: var(--bg-secondary);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 4px 15px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .hamburger:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px var(--shadow);
+        }
+
+        .hamburger span {
+            display: block;
+            width: 22px;
+            height: 2.5px;
+            background: var(--text-primary);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(6px, -6px);
+        }
+
+        /* Sidebar Menu */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            z-index: 998;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100%;
+            background: var(--bg-secondary);
+            z-index: 999;
+            transition: all 0.3s ease;
+            box-shadow: 4px 0 20px var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-logo {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+        .nav-item:hover {
+            background: rgba(230, 57, 70, 0.08);
+            color: var(--accent);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(230, 57, 70, 0.15) 0%, rgba(255, 107, 122, 0.1) 100%);
+            color: var(--accent);
+            border-right: 3px solid var(--accent);
+        }
+
+        .nav-item-icon {
+            font-size: 1.3rem;
+            width: 28px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 5rem 1.5rem 1.5rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .upload-zone {
+            display: block;
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: fadeIn 0.6s ease-out 0.2s both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px var(--shadow);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(230, 57, 70, 0.05) 0%, rgba(255, 107, 122, 0.05) 100%);
+        }
+
+        .upload-zone.has-file {
+            border-style: solid;
+            border-color: var(--success);
+        }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .file-name {
+            font-family: 'Space Mono', monospace;
+            background: var(--bg-accent);
+            color: var(--bg-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            display: inline-block;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .dark .file-name {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1.5rem;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(230, 57, 70, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading-section {
+            display: none;
+            text-align: center;
+            padding: 3rem;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .schedule-section {
+            display: none;
+            margin-top: 2rem;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .schedule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .schedule-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .time-badge {
+            font-family: 'Space Mono', monospace;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            color: white;
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        .error-message {
+            background: rgba(230, 57, 70, 0.1);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .reset-btn {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.7rem 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .reset-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .person-card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px var(--shadow);
+            margin-bottom: 1.5rem;
+            animation: fadeIn 0.5s ease-out forwards;
+            opacity: 0;
+        }
+
+        .person-name {
+            background: var(--bg-accent);
+            color: var(--bg-primary);
+            padding: 1rem 1.25rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dark .person-name {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .person-name::before {
+            content: '👤';
+        }
+
+        .person-schedule {
+            width: 100%;
+        }
+
+        .person-schedule table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .person-schedule th {
+            background: rgba(230, 57, 70, 0.08);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .dark .person-schedule th {
+            background: rgba(255, 107, 122, 0.15);
+        }
+
+        .person-schedule {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .person-schedule td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        .person-schedule tr:last-child td {
+            border-bottom: none;
+        }
+
+        .person-schedule tr:hover td {
+            background: rgba(230, 57, 70, 0.03);
+        }
+
+        .weekday-cell {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .date-cell {
+            font-family: 'Space Mono', monospace;
+            white-space: nowrap;
+            text-align: center;
+            min-width: 70px;
+        }
+
+        .service-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .service-badge {
+            background: rgba(42, 157, 143, 0.15);
+            color: var(--success);
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: inline-block;
+            font-weight: 600;
+            font-family: 'Space Mono', monospace;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .service-free {
+            background: rgba(100, 100, 120, 0.15);
+            color: var(--text-secondary);
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: inline-block;
+            font-weight: 500;
+            font-style: italic;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .service-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.1;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .service-icon.flag-sweden {
+            background: linear-gradient(180deg, #006AA7 0%, #006AA7 40%, #FECC00 40%, #FECC00 60%, #006AA7 60%, #006AA7 100%);
+            position: relative;
+        }
+
+        .service-icon.flag-sweden::before {
+            content: '';
+            position: absolute;
+            left: 25%;
+            top: 0;
+            width: 20%;
+            height: 100%;
+            background: #FECC00;
+        }
+
+        .service-icon.flag-denmark {
+            background: #C8102E;
+            position: relative;
+        }
+
+        .service-icon.flag-denmark::before {
+            content: '';
+            position: absolute;
+            left: 25%;
+            top: 0;
+            width: 15%;
+            height: 100%;
+            background: #fff;
+        }
+
+        .service-icon.flag-denmark::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 42%;
+            width: 100%;
+            height: 16%;
+            background: #fff;
+        }
+
+        .service-icon.icon-text {
+            background: #ffffff;
+            color: #1a1a1a;
+            padding: 3px 4px;
+            border: 2px solid #1a1a1a;
+            font-weight: 600;
+        }
+
+        .dark .service-icon.icon-text {
+            background: #ffffff;
+            color: #1a1a1a;
+            border-color: #1a1a1a;
+        }
+
+        .service-icon.icon-dag1 {
+            background: #ffffff;
+            color: #1a1a1a;
+            padding: 3px 4px;
+            border: 2px solid #1a1a1a;
+            border-bottom: none;
+            font-weight: 600;
+            position: relative;
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 90% 90%, 80% 85%, 70% 95%, 60% 85%, 50% 92%, 40% 85%, 30% 90%, 20% 85%, 10% 92%, 0 85%);
+            padding-bottom: 8px;
+        }
+
+        .service-icon.icon-dag2 {
+            background: #ffffff;
+            color: #1a1a1a;
+            padding: 3px 4px;
+            border: 2px solid #1a1a1a;
+            border-top: none;
+            font-weight: 600;
+            position: relative;
+            clip-path: polygon(0 15%, 10% 8%, 20% 15%, 30% 5%, 40% 15%, 50% 10%, 60% 15%, 70% 5%, 80% 15%, 90% 8%, 100% 15%, 100% 100%, 0 100%);
+            padding-top: 8px;
+        }
+
+        .dark .service-icon.icon-dag1,
+        .dark .service-icon.icon-dag2 {
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+
+        .no-schedule {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-secondary);
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        /* Today's Workers Page */
+        .today-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .date-nav-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .date-nav-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            box-shadow: 0 4px 15px var(--shadow);
+            transition: all 0.2s ease;
+        }
+
+        .date-nav-btn:hover {
+            background: var(--accent);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .date-nav-btn:active {
+            transform: scale(0.98);
+        }
+
+        .date-display-picker {
+            background: var(--bg-secondary);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px var(--shadow);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            min-width: 220px;
+        }
+
+        .date-display-picker:hover {
+            box-shadow: 0 6px 20px var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .date-display-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .date-display-text::after {
+            content: '📅';
+            font-size: 1rem;
+        }
+
+        .hidden-date-picker {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            cursor: pointer;
+            z-index: 2;
+            font-size: 16px;
+        }
+
+        /* Show picker on focus for better mobile support */
+        .hidden-date-picker::-webkit-calendar-picker-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: auto;
+            height: auto;
+            color: transparent;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .worker-card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: fadeIn 0.4s ease-out forwards;
+            opacity: 0;
+        }
+
+        .worker-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .worker-info {
+            flex: 1;
+        }
+
+        .worker-name {
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .worker-time {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .worker-service {
+            text-align: right;
+        }
+
+        .no-data-message {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .no-data-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .no-data-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .no-data-text {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .link-btn {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 0.75rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .link-btn:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Upload Tabs */
+        .upload-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            background: var(--bg-secondary);
+            padding: 0.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px var(--shadow);
+        }
+
+        .upload-tab {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-tab:hover {
+            color: var(--text-primary);
+            background: rgba(230, 57, 70, 0.05);
+        }
+
+        .upload-tab.active {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            color: white;
+        }
+
+        .schedule-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .save-btn {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 0.7rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(42, 157, 143, 0.3);
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .include-free-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .include-free-checkbox:hover {
+            color: var(--text-primary);
+        }
+
+        .include-free-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .reset-btn.danger {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .reset-btn.danger:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 1rem;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            background: var(--bg-accent);
+            color: var(--bg-primary);
+        }
+
+        .dark .modal-header {
+            background: var(--accent);
+            color: white;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-title::before {
+            content: '👤';
+        }
+
+        .modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: inherit;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .modal-schedule-table th:nth-child(1),
+        .modal-schedule-table td:nth-child(1) { width: 22%; }
+        .modal-schedule-table th:nth-child(2),
+        .modal-schedule-table td:nth-child(2) { width: 18%; }
+        .modal-schedule-table th:nth-child(3),
+        .modal-schedule-table td:nth-child(3) { width: 25%; }
+        .modal-schedule-table th:nth-child(4),
+        .modal-schedule-table td:nth-child(4) { width: 35%; }
+
+        .modal-schedule-table th {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .dark .modal-schedule-table th {
+            background: var(--bg-secondary);
+        }
+
+        .schedule-table-header {
+            flex-shrink: 0;
+        }
+
+        .modal-schedule-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .modal-schedule-table tr:hover td {
+            background: rgba(230, 57, 70, 0.03);
+        }
+
+        /* Clickable worker card */
+        .worker-card.clickable {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .worker-card.clickable:hover {
+            transform: translateX(5px);
+            box-shadow: 0 6px 25px var(--shadow);
+        }
+
+        .worker-card.clickable:active {
+            transform: translateX(2px);
+        }
+
+        .person-count {
+            background: var(--bg-secondary);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .person-count strong {
+            color: var(--accent);
+        }
+
+        /* Schedules List */
+        .schedule-list-item {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .schedule-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            background: var(--accent);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .schedule-list-header:hover {
+            opacity: 0.9;
+        }
+
+        .schedule-list-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .schedule-list-table th {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .schedule-list-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .schedule-list-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .editable-cell {
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            transition: background 0.2s ease;
+            display: inline-block;
+            min-width: 60px;
+        }
+
+        .editable-cell:hover {
+            background: rgba(230, 57, 70, 0.1);
+        }
+
+        .editable-cell input {
+            width: 100%;
+            padding: 0.25rem 0.5rem;
+            border: 2px solid var(--accent);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .editable-cell input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.2);
+        }
+
+        .schedule-list-name {
+            font-weight: 600;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .schedule-list-name::before {
+            content: '👤';
+        }
+
+        .schedule-list-meta {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .schedule-list-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .schedule-list-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: inherit;
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .schedule-list-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .schedule-list-btn.delete {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .schedule-list-btn.delete:hover {
+            background: rgba(255, 100, 100, 0.4);
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .schedule-list-item.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .schedule-list-body {
+            display: none;
+            padding: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .schedule-list-item.expanded .schedule-list-body {
+            display: block;
+        }
+
+        .schedules-summary {
+            background: var(--bg-secondary);
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .schedules-summary-text {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .schedules-summary-text strong {
+            color: var(--accent);
+        }
+
+        /* Upload Success */
+        .upload-success {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            box-shadow: 0 4px 20px var(--shadow);
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .success-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 0.5rem;
+        }
+
+        .success-text {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Form styles */
+        .add-person-section,
+        .add-entry-section,
+        .import-section {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .form-group.half {
+            flex: 1;
+        }
+
+        .import-section .upload-zone {
+            margin: 0;
+            animation: none;
+        }
+
+        @media (max-width: 600px) {
+            .main-content {
+                padding: 4.5rem 1rem 1rem;
+            }
+
+            .upload-zone {
+                padding: 2rem 1.5rem;
+            }
+
+            .upload-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .worker-card {
+                flex-wrap: wrap;
+            }
+
+            .worker-service {
+                width: 100%;
+                text-align: left;
+                margin-top: 0.5rem;
+                padding-left: 66px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hamburger Button -->
+    <button class="hamburger" id="hamburgerBtn">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                📅 Schemahanterare
+            </div>
+        </div>
+        <div class="sidebar-nav">
+            <button class="nav-item active" data-page="today">
+                <span class="nav-item-icon">👥</span>
+                Vem jobbar idag
+            </button>
+            <button class="nav-item" data-page="schedules">
+                <span class="nav-item-icon">📋</span>
+                Scheman
+            </button>
+            <button class="nav-item" data-page="upload">
+                <span class="nav-item-icon">📤</span>
+                Ladda upp schema
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Today's Workers Page -->
+        <div class="page active" id="page-today">
+            <header>
+                <div class="today-header">
+                    <h1>👥 Vem jobbar idag?</h1>
+                </div>
+                <p class="subtitle">Se vilka som arbetar idag</p>
+            </header>
+
+            <div class="date-nav-container">
+                <button class="date-nav-btn" id="prevDayBtn" title="Föregående dag">←</button>
+                <div class="date-display-picker">
+                    <div class="date-display-text" id="dateDisplayText"></div>
+                    <input type="date" id="datePicker" class="hidden-date-picker">
+                </div>
+                <button class="date-nav-btn" id="nextDayBtn" title="Nästa dag">→</button>
+            </div>
+
+            <div id="todayWorkersList">
+                <div class="no-data-message">
+                    <div class="no-data-icon">📋</div>
+                    <div class="no-data-title">Inget schema laddat</div>
+                    <div class="no-data-text">Ladda upp ett schema för att se vem som jobbar idag</div>
+                    <button class="link-btn" id="goToUploadBtn">Ladda upp schema</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedules Page -->
+        <div class="page" id="page-schedules">
+            <header>
+                <h1>📋 Scheman</h1>
+                <p class="subtitle">Alla uppladdade scheman</p>
+            </header>
+
+            <div id="schedulesListContainer">
+                <div class="no-data-message">
+                    <div class="no-data-icon">📋</div>
+                    <div class="no-data-title">Inga scheman</div>
+                    <div class="no-data-text">Ladda upp scheman för att se dem här</div>
+                    <button class="link-btn" id="goToUploadBtn2">Ladda upp schema</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Schedule Page -->
+        <div class="page" id="page-upload">
+            <header>
+                <h1>📤 Importera schema</h1>
+                <p class="subtitle">Ladda upp en PDF eller JSON-fil</p>
+            </header>
+
+            <!-- Import Section -->
+            <div class="import-section">
+                <label class="upload-zone" id="uploadZone" for="fileInput">
+                    <div class="upload-icon">📄</div>
+                    <p class="upload-text">Tryck här för att välja fil</p>
+                    <p class="upload-hint">PDF eller JSON-fil</p>
+                    <div class="file-name" id="fileName" style="display: none;"></div>
+                    <input type="file" id="fileInput" accept=".pdf,.json">
+                </label>
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="loading-section" id="loadingSection" style="display: none;">
+                <div class="spinner"></div>
+                <p class="loading-text" id="loadingText">Läser PDF...</p>
+            </div>
+
+            <div class="upload-success" id="uploadSuccess" style="display: none;">
+                <div class="success-icon">✅</div>
+                <h2 class="success-title">Klar!</h2>
+                <p class="success-text" id="successText">Schemat har sparats</p>
+                <button class="btn" id="uploadNewBtn">
+                    <span>📄</span> Lägg till fler
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Person Detail Modal -->
+    <div class="modal-overlay" id="personModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalPersonName">Personnamn</h2>
+                <button class="modal-close" id="modalClose">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Person schedule will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+
+        // Elements
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const navItems = document.querySelectorAll('.nav-item');
+        const pages = document.querySelectorAll('.page');
+
+        // PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileName');
+        const errorMessage = document.getElementById('errorMessage');
+        const loadingSection = document.getElementById('loadingSection');
+        const loadingText = document.getElementById('loadingText');
+        const goToUploadBtn = document.getElementById('goToUploadBtn');
+        const todayWorkersList = document.getElementById('todayWorkersList');
+        const datePicker = document.getElementById('datePicker');
+        const dateDisplayText = document.getElementById('dateDisplayText');
+        const prevDayBtn = document.getElementById('prevDayBtn');
+        const nextDayBtn = document.getElementById('nextDayBtn');
+
+        // New elements
+        const uploadSuccess = document.getElementById('uploadSuccess');
+        const successText = document.getElementById('successText');
+        const uploadNewBtn = document.getElementById('uploadNewBtn');
+        const personModal = document.getElementById('personModal');
+        const modalPersonName = document.getElementById('modalPersonName');
+        const modalBody = document.getElementById('modalBody');
+        const modalClose = document.getElementById('modalClose');
+
+        let selectedFile = null;
+        let scheduleData = null;
+
+        let selectedDate = new Date();
+        let includeFree = false;
+
+        // Set today's date in date picker
+        function initDatePicker() {
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            datePicker.value = dateStr;
+            updateDateDisplay(now);
+        }
+
+        function updateDateDisplay(date) {
+            const weekdays = ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag'];
+            const months = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli', 'augusti', 'september', 'oktober', 'november', 'december'];
+            const weekday = weekdays[date.getDay()];
+            const day = date.getDate();
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+
+            dateDisplayText.textContent = `${weekday} ${day} ${month} ${year}`;
+        }
+
+        datePicker.addEventListener('change', (e) => {
+            selectedDate = new Date(e.target.value);
+            updateDateDisplay(selectedDate);
+            renderTodayWorkers();
+        });
+
+        // Arrow navigation
+        prevDayBtn.addEventListener('click', () => {
+            selectedDate.setDate(selectedDate.getDate() - 1);
+            datePicker.value = selectedDate.toISOString().split('T')[0];
+            updateDateDisplay(selectedDate);
+            renderTodayWorkers();
+        });
+
+        nextDayBtn.addEventListener('click', () => {
+            selectedDate.setDate(selectedDate.getDate() + 1);
+            datePicker.value = selectedDate.toISOString().split('T')[0];
+            updateDateDisplay(selectedDate);
+            renderTodayWorkers();
+        });
+
+        // Click on date display to open picker
+        const dateDisplayPicker = document.querySelector('.date-display-picker');
+        dateDisplayPicker.addEventListener('click', (e) => {
+            // Prevent double triggering if clicking on the input itself
+            if (e.target !== datePicker) {
+                // Try showPicker first, fall back to focus+click
+                try {
+                    datePicker.showPicker();
+                } catch (err) {
+                    datePicker.focus();
+                    datePicker.click();
+                }
+            }
+        });
+
+        initDatePicker();
+
+        // Hamburger menu toggle
+        function toggleSidebar() {
+            hamburgerBtn.classList.toggle('active');
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+        }
+
+        hamburgerBtn.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        // Navigation
+        function navigateTo(pageId) {
+            navItems.forEach(item => {
+                item.classList.toggle('active', item.dataset.page === pageId);
+            });
+            pages.forEach(page => {
+                page.classList.toggle('active', page.id === `page-${pageId}`);
+            });
+
+            if (pageId === 'today') {
+                renderTodayWorkers();
+            } else if (pageId === 'schedules') {
+                renderSchedulesList();
+            }
+
+            // Close sidebar on mobile
+            if (sidebar.classList.contains('active')) {
+                toggleSidebar();
+            }
+        }
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => navigateTo(item.dataset.page));
+        });
+
+        goToUploadBtn.addEventListener('click', () => navigateTo('upload'));
+        document.getElementById('goToUploadBtn2').addEventListener('click', () => navigateTo('upload'));
+
+        // Upload new button
+        uploadNewBtn.addEventListener('click', () => {
+            resetUploadPage();
+        });
+
+        function resetUploadPage() {
+            selectedFile = null;
+            fileInput.value = '';
+            fileNameDisplay.style.display = 'none';
+            uploadZone.classList.remove('has-file');
+            uploadSuccess.style.display = 'none';
+            document.querySelector('.import-section').style.display = 'block';
+            hideError();
+        }
+
+        // Modal functions
+        modalClose.addEventListener('click', closeModal);
+        personModal.addEventListener('click', (e) => {
+            if (e.target === personModal) closeModal();
+        });
+
+        // Handle file import (PDF or JSON)
+        function handleFile(file) {
+            if (!file) {
+                showError('Ingen fil vald.');
+                return;
+            }
+
+            selectedFile = file;
+            fileNameDisplay.textContent = file.name;
+            fileNameDisplay.style.display = 'inline-block';
+            uploadZone.classList.add('has-file');
+            hideError();
+
+            // Check file type
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                importPdfFile(file);
+            } else {
+                importJsonFile(file);
+            }
+        }
+
+        async function importJsonFile(file) {
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+
+                if (!data.people || !Array.isArray(data.people)) {
+                    throw new Error('Ogiltig schema-fil. Saknar "people"-data.');
+                }
+
+                // Merge with existing data
+                if (scheduleData && scheduleData.people && scheduleData.people.length > 0) {
+                    mergeScheduleData(data);
+                } else {
+                    scheduleData = data;
+                }
+
+                showUploadSuccess(data.people.length);
+            } catch (err) {
+                showError('Kunde inte läsa filen: ' + err.message);
+            }
+        }
+
+        async function importPdfFile(file) {
+            try {
+                document.querySelector('.import-section').style.display = 'none';
+                loadingSection.style.display = 'block';
+                loadingText.textContent = 'Läser PDF...';
+
+                // Extract text from PDF
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    loadingText.textContent = `Läser sida ${i} av ${pdf.numPages}...`;
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n';
+                }
+
+                loadingText.textContent = 'Analyserar schema...';
+
+                // Parse the text to extract schedule data
+                const extractedData = parseScheduleFromText(fullText);
+
+                if (!extractedData.people || extractedData.people.length === 0) {
+                    loadingSection.style.display = 'none';
+                    document.querySelector('.import-section').style.display = 'block';
+                    showError('Kunde inte hitta något schema i PDF:en. Kontrollera att filen är korrekt.');
+                    return;
+                }
+
+                // Merge with existing data
+                if (scheduleData && scheduleData.people && scheduleData.people.length > 0) {
+                    mergeScheduleData(extractedData);
+                } else {
+                    scheduleData = extractedData;
+                }
+
+                loadingSection.style.display = 'none';
+                showUploadSuccess(extractedData.people.length);
+
+            } catch (err) {
+                loadingSection.style.display = 'none';
+                document.querySelector('.import-section').style.display = 'block';
+                showError('Kunde inte läsa PDF:en: ' + err.message);
+            }
+        }
+
+        // Parse schedule data from PDF text
+        function parseScheduleFromText(text) {
+            const people = [];
+
+            // Weekday mapping
+            const weekdays = {
+                'måndag': 'Måndag', 'mån': 'Måndag',
+                'tisdag': 'Tisdag', 'tis': 'Tisdag',
+                'onsdag': 'Onsdag', 'ons': 'Onsdag',
+                'torsdag': 'Torsdag', 'tor': 'Torsdag',
+                'fredag': 'Fredag', 'fre': 'Fredag',
+                'lördag': 'Lördag', 'lör': 'Lördag',
+                'söndag': 'Söndag', 'sön': 'Söndag'
+            };
+
+            // Try to find person name from "Anställningsnr XXXXX - Name" pattern
+            const nameMatch = text.match(/Anställningsnr\s*\d+\s*[-–]\s*([A-ZÅÄÖa-zåäö]+\s+[A-ZÅÄÖa-zåäö]+)/i);
+            let personName = nameMatch ? nameMatch[1].trim() : null;
+
+            // Alternative: Try "Work_XXXXX_Firstname_Lastname" from filename pattern in text
+            if (!personName) {
+                const fileNameMatch = text.match(/Work[_\s]*\d+[_\s]*([A-ZÅÄÖa-zåäö]+)[_\s]+([A-ZÅÄÖa-zåäö]+)/i);
+                if (fileNameMatch) {
+                    personName = `${fileNameMatch[1]} ${fileNameMatch[2]}`;
+                }
+            }
+
+            if (!personName) {
+                personName = 'Okänd';
+            }
+
+            const currentPerson = { name: personName, entries: [] };
+            people.push(currentPerson);
+
+            // Pattern for schedule rows: Weekday YYYY-MM-DD ServiceCode Time
+            // Example: "Torsdag 2026-01-01 17203 04:16 - 10:14"
+            // Or: "Lördag 2026-01-03 FRIDAG FRIDAG"
+
+            // Match pattern: Weekday + Date (YYYY-MM-DD) + Service + optional Time
+            const rowPattern = /(måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag)\s+(\d{4}-\d{2}-\d{2})\s+(\*?\s*\d{4,5}[A-Z]?|FRIDAG|Reserv\w*)\s*(?:(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2}))?/gi;
+
+            let match;
+            while ((match = rowPattern.exec(text)) !== null) {
+                const weekday = weekdays[match[1].toLowerCase()] || match[1];
+                const dateStr = match[2]; // YYYY-MM-DD
+                const service = match[3].replace(/^\*\s*/, '').trim(); // Remove * prefix
+                const startTime = match[4] || '';
+                const endTime = match[5] || '';
+
+                // Format date as DD/MM
+                const dateParts = dateStr.split('-');
+                const formattedDate = `${dateParts[2]}/${dateParts[1]}`;
+
+                // Format time
+                let time = '';
+                if (startTime && endTime) {
+                    time = `${startTime}-${endTime}`;
+                }
+
+                // Determine service display
+                let finalService = service;
+                if (service.toUpperCase() === 'FRIDAG') {
+                    finalService = 'Fri';
+                }
+
+                currentPerson.entries.push({
+                    weekday: weekday,
+                    date: formattedDate,
+                    time: time,
+                    service: finalService
+                });
+            }
+
+            // If no matches with the main pattern, try a more flexible approach
+            if (currentPerson.entries.length === 0) {
+                // Fallback: Look for date patterns and times separately
+                const dateTimePattern = /(\d{4}-\d{2}-\d{2})\s+(\*?\s*\d{4,5}[A-Z]?|FRIDAG|Reserv\w*)\s*(?:(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2}))?/gi;
+
+                while ((match = dateTimePattern.exec(text)) !== null) {
+                    const dateStr = match[1];
+                    const service = match[2].replace(/^\*\s*/, '').trim();
+                    const startTime = match[3] || '';
+                    const endTime = match[4] || '';
+
+                    const dateParts = dateStr.split('-');
+                    const formattedDate = `${dateParts[2]}/${dateParts[1]}`;
+
+                    // Determine weekday from date
+                    const dateObj = new Date(dateStr);
+                    const weekdayNames = ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag'];
+                    const weekday = weekdayNames[dateObj.getDay()];
+
+                    let time = '';
+                    if (startTime && endTime) {
+                        time = `${startTime}-${endTime}`;
+                    }
+
+                    let finalService = service;
+                    if (service.toUpperCase() === 'FRIDAG') {
+                        finalService = 'Fri';
+                    }
+
+                    currentPerson.entries.push({
+                        weekday: weekday,
+                        date: formattedDate,
+                        time: time,
+                        service: finalService
+                    });
+                }
+            }
+
+            // Filter out people with no entries
+            const validPeople = people.filter(p => p.entries && p.entries.length > 0);
+
+            return { people: validPeople };
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 2rem;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--success);
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 50px;
+                font-weight: 500;
+                z-index: 3000;
+                animation: fadeIn 0.3s ease-out;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+
+        function openPersonModal(personName) {
+            const person = scheduleData.people.find(p => p.name === personName);
+            if (!person) return;
+
+            modalPersonName.textContent = person.name;
+
+            let html = '<table class="modal-schedule-table"><thead><tr><th>Veckodag</th><th>Datum</th><th>Tid</th><th>Tjänst</th></tr></thead><tbody>';
+
+            if (person.entries && person.entries.length > 0) {
+                // Sort entries by date
+                const sortedEntries = [...person.entries].sort((a, b) => {
+                    const dateA = normalizeDate(a.date);
+                    const dateB = normalizeDate(b.date);
+                    if (!dateA || !dateB) return 0;
+                    if (dateA.month !== dateB.month) return dateA.month - dateB.month;
+                    return dateA.day - dateB.day;
+                });
+
+                sortedEntries.forEach(entry => {
+                    const serviceClass = isServiceFree(entry.service) ? 'service-free' : 'service-badge';
+                    const serviceIcon = getServiceIcon(entry.service);
+                    const displayService = formatServiceDisplay(entry.service);
+                    html += `
+                        <tr>
+                            <td class="weekday-cell">${escapeHtml(entry.weekday || '-')}</td>
+                            <td class="date-cell">${escapeHtml(entry.date || '-')}</td>
+                            <td><span class="time-badge">${escapeHtml(entry.time || '-')}</span></td>
+                            <td>
+                                <div class="service-container">
+                                    <span class="${serviceClass}">${escapeHtml(displayService || '-')}</span>
+                                    ${serviceIcon}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                html += '<tr><td colspan="4" style="text-align: center;">Inga schemauppgifter</td></tr>';
+            }
+
+            html += '</tbody></table>';
+            modalBody.innerHTML = html;
+
+            personModal.classList.add('active');
+        }
+
+        function closeModal() {
+            personModal.classList.remove('active');
+        }
+
+        // Save schema to JSON
+
+        function saveScheduleToJson() {
+            if (!scheduleData || !scheduleData.people) {
+                showError('Inget schema att spara.');
+                return;
+            }
+
+            const dataStr = JSON.stringify(scheduleData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const fileName = `schema-${dateStr}.json`;
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function showUploadSuccess(personCount) {
+            successText.textContent = `${personCount} schema har importerats`;
+            uploadSuccess.style.display = 'block';
+            document.querySelector('.import-section').style.display = 'none';
+        }
+
+        function mergeScheduleData(newData) {
+            if (!newData.people) return;
+
+            newData.people.forEach(newPerson => {
+                const existingPerson = scheduleData.people.find(
+                    p => p.name.toLowerCase() === newPerson.name.toLowerCase()
+                );
+
+                if (existingPerson) {
+                    // Merge entries - avoid duplicates
+                    newPerson.entries.forEach(newEntry => {
+                        const isDuplicate = existingPerson.entries.some(
+                            e => e.date === newEntry.date && e.time === newEntry.time
+                        );
+                        if (!isDuplicate) {
+                            existingPerson.entries.push(newEntry);
+                        }
+                    });
+                } else {
+                    // Add new person
+                    scheduleData.people.push(newPerson);
+                }
+            });
+        }
+
+
+        function normalizeDate(dateStr) {
+            // Try to parse various date formats and return { day, month, year }
+            if (!dateStr) return null;
+
+            const cleaned = dateStr.trim();
+
+            // Format: DD/MM or DD/MM/YYYY
+            let match = cleaned.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+            if (match) {
+                return {
+                    day: parseInt(match[1], 10),
+                    month: parseInt(match[2], 10),
+                    year: match[3] ? parseInt(match[3], 10) : null
+                };
+            }
+
+            // Format: DD-MM or DD-MM-YYYY
+            match = cleaned.match(/^(\d{1,2})-(\d{1,2})(?:-(\d{2,4}))?$/);
+            if (match) {
+                return {
+                    day: parseInt(match[1], 10),
+                    month: parseInt(match[2], 10),
+                    year: match[3] ? parseInt(match[3], 10) : null
+                };
+            }
+
+            // Format: YYYY-MM-DD
+            match = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+            if (match) {
+                return {
+                    day: parseInt(match[3], 10),
+                    month: parseInt(match[2], 10),
+                    year: parseInt(match[1], 10)
+                };
+            }
+
+            // Format: DD.MM or DD.MM.YYYY
+            match = cleaned.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?$/);
+            if (match) {
+                return {
+                    day: parseInt(match[1], 10),
+                    month: parseInt(match[2], 10),
+                    year: match[3] ? parseInt(match[3], 10) : null
+                };
+            }
+
+            return null;
+        }
+
+        function datesMatch(entryDate, targetDate) {
+            const parsed = normalizeDate(entryDate);
+            if (!parsed) return false;
+
+            const targetDay = targetDate.getDate();
+            const targetMonth = targetDate.getMonth() + 1;
+            const targetYear = targetDate.getFullYear();
+
+            // Check day and month
+            if (parsed.day !== targetDay || parsed.month !== targetMonth) {
+                return false;
+            }
+
+            // If year is specified, check it too
+            if (parsed.year !== null) {
+                const entryYear = parsed.year < 100 ? 2000 + parsed.year : parsed.year;
+                if (entryYear !== targetYear) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        function renderTodayWorkers() {
+            if (!scheduleData || !scheduleData.people || scheduleData.people.length === 0) {
+                todayWorkersList.innerHTML = `
+                    <div class="no-data-message">
+                        <div class="no-data-icon">📋</div>
+                        <div class="no-data-title">Inget schema laddat</div>
+                        <div class="no-data-text">Ladda upp ett schema för att se vem som jobbar</div>
+                        <button class="link-btn" onclick="navigateTo('upload')">Ladda upp schema</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const targetWeekday = ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag'][selectedDate.getDay()];
+
+            const workersToday = [];
+            const freeToday = [];
+
+            scheduleData.people.forEach(person => {
+                if (person.entries) {
+                    person.entries.forEach(entry => {
+                        // Check if date matches (primary check)
+                        const matchesDate = datesMatch(entry.date, selectedDate);
+
+                        // Only use weekday as fallback if entry has NO parseable date
+                        const hasDate = normalizeDate(entry.date) !== null;
+                        const matchesWeekday = !hasDate && entry.weekday &&
+                            entry.weekday.toLowerCase() === targetWeekday.toLowerCase();
+
+                        if (matchesDate || matchesWeekday) {
+                            const isFree = isServiceFree(entry.service);
+
+                            // Check if this person is already added (avoid duplicates)
+                            const targetList = isFree ? freeToday : workersToday;
+                            const alreadyAdded = targetList.some(w =>
+                                w.name === person.name && w.time === entry.time && w.service === entry.service
+                            );
+                            if (!alreadyAdded) {
+                                targetList.push({
+                                    name: person.name,
+                                    time: entry.time,
+                                    service: entry.service,
+                                    isFree: isFree
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Combine lists based on includeFree setting
+            let displayList = [...workersToday];
+            if (includeFree) {
+                displayList = displayList.concat(freeToday);
+            }
+
+            // Build filter row HTML
+            const filterRowHtml = `
+                <div class="filter-row">
+                    <div class="person-count">👥 <strong>${workersToday.length}</strong> personer arbetar${includeFree && freeToday.length > 0 ? `, <strong>${freeToday.length}</strong> lediga` : ''}</div>
+                    <label class="include-free-checkbox">
+                        <input type="checkbox" id="includeFreeCheckbox" ${includeFree ? 'checked' : ''}>
+                        Inkludera lediga
+                    </label>
+                </div>
+            `;
+
+            if (displayList.length === 0) {
+                todayWorkersList.innerHTML = filterRowHtml + `
+                    <div class="no-data-message">
+                        <div class="no-data-icon">🏖️</div>
+                        <div class="no-data-title">Ingen arbetar denna dag</div>
+                        <div class="no-data-text">Enligt det laddade schemat finns inga arbetspass för valt datum</div>
+                    </div>
+                `;
+                // Re-attach checkbox listener
+                attachCheckboxListener();
+                return;
+            }
+
+            // Sort by start time (free people go to end if included)
+            displayList.sort((a, b) => {
+                // If includeFree, put working people first
+                if (a.isFree !== b.isFree) {
+                    return a.isFree ? 1 : -1;
+                }
+                const timeA = parseStartTime(a.time);
+                const timeB = parseStartTime(b.time);
+                return timeA - timeB;
+            });
+
+            let html = filterRowHtml;
+            displayList.forEach((worker, index) => {
+                const initials = worker.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                const serviceIcon = getServiceIcon(worker.service);
+                const serviceClass = worker.isFree ? 'service-free' : 'service-badge';
+                const displayService = formatServiceDisplay(worker.service);
+                html += `
+                    <div class="worker-card clickable" style="animation-delay: ${index * 0.05}s" onclick="openPersonModal('${escapeHtml(worker.name).replace(/'/g, "\\'")}')">
+                        <div class="worker-avatar">${initials}</div>
+                        <div class="worker-info">
+                            <div class="worker-name">${escapeHtml(worker.name)}</div>
+                            <div class="worker-time">${worker.isFree ? '🏖️ Ledig' : '🕐 ' + escapeHtml(worker.time || 'Tid ej angiven')}</div>
+                        </div>
+                        <div class="worker-service">
+                            <div class="service-container">
+                                <span class="${serviceClass}">${escapeHtml(displayService || '-')}</span>
+                                ${serviceIcon}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            todayWorkersList.innerHTML = html;
+
+            // Re-attach checkbox listener
+            attachCheckboxListener();
+        }
+
+        function attachCheckboxListener() {
+            const checkbox = document.getElementById('includeFreeCheckbox');
+            if (checkbox) {
+                checkbox.addEventListener('change', (e) => {
+                    includeFree = e.target.checked;
+                    renderTodayWorkers();
+                });
+            }
+        }
+
+        function renderSchedulesList() {
+            const container = document.getElementById('schedulesListContainer');
+
+            if (!scheduleData || !scheduleData.people || scheduleData.people.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data-message">
+                        <div class="no-data-icon">📋</div>
+                        <div class="no-data-title">Inga scheman</div>
+                        <div class="no-data-text">Ladda upp scheman för att se dem här</div>
+                        <button class="link-btn" onclick="navigateTo('upload')">Ladda upp schema</button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Count total entries
+            const totalEntries = scheduleData.people.reduce((sum, p) => sum + (p.entries ? p.entries.length : 0), 0);
+
+            let html = `
+                <div class="schedules-summary">
+                    <div class="schedules-summary-text">
+                        👥 <strong>${scheduleData.people.length}</strong> personer &nbsp;|&nbsp; 📅 <strong>${totalEntries}</strong> schemauppgifter
+                    </div>
+                    <div class="schedule-actions">
+                        <button class="save-btn" onclick="saveScheduleToJson()">💾 Spara alla</button>
+                        <button class="reset-btn danger" onclick="clearAllSchedules()">🗑️ Rensa allt</button>
+                    </div>
+                </div>
+            `;
+
+            scheduleData.people.forEach((person, personIndex) => {
+                const entryCount = person.entries ? person.entries.length : 0;
+
+                html += `
+                    <div class="schedule-list-item" id="schedule-item-${personIndex}">
+                        <div class="schedule-list-header" onclick="openEditScheduleModal(${personIndex})">
+                            <div>
+                                <div class="schedule-list-name">${escapeHtml(person.name)}</div>
+                                <div class="schedule-list-meta">${entryCount} schemauppgifter</div>
+                            </div>
+                            <div class="schedule-list-actions">
+                                <button class="schedule-list-btn delete" onclick="event.stopPropagation(); confirmDeletePerson('${escapeHtml(person.name).replace(/'/g, "\\'")}')">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function openEditScheduleModal(personIndex) {
+            const person = scheduleData.people[personIndex];
+            if (!person) return;
+
+            let entriesHtml = '';
+            if (person.entries && person.entries.length > 0) {
+                person.entries.forEach((entry, entryIndex) => {
+                    const serviceIcon = getServiceIcon(entry.service);
+                    const displayService = formatServiceDisplay(entry.service);
+                    const serviceClass = isServiceFree(entry.service) ? 'service-free' : 'service-badge';
+                    // Format date as day/month
+                    let displayDate = entry.date || '-';
+                    if (entry.date && entry.date.includes('/')) {
+                        displayDate = entry.date; // Already in DD/MM format
+                    }
+
+                    entriesHtml += `
+                        <tr>
+                            <td>${escapeHtml(entry.weekday || '-')}</td>
+                            <td>${escapeHtml(displayDate)}</td>
+                            <td>
+                                <span class="editable-cell" onclick="openEditTimeModal(${personIndex}, ${entryIndex})">${escapeHtml(entry.time || '-')}</span>
+                            </td>
+                            <td>
+                                <div class="service-container">
+                                    <span class="editable-cell ${serviceClass}" onclick="openEditServiceModal(${personIndex}, ${entryIndex})">${escapeHtml(displayService || '-')}</span>
+                                    ${serviceIcon}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                entriesHtml = '<tr><td colspan="4" style="text-align: center;">Inga schemauppgifter</td></tr>';
+            }
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay active';
+            modal.id = 'editScheduleModal';
+            modal.style.cssText = 'padding: 0;';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 100%; width: 100%; height: 100%; max-height: 100%; border-radius: 0; display: flex; flex-direction: column;">
+                    <div class="modal-header" style="display: flex; align-items: center; gap: 1rem;">
+                        <button class="modal-close" onclick="closeEditScheduleModal()" style="position: static; order: -1;">✕</button>
+                        <h2 class="modal-title" style="flex: 1;">${escapeHtml(person.name)}</h2>
+                    </div>
+                    <div class="schedule-table-header" style="background: var(--bg-secondary); border-bottom: 2px solid var(--border);">
+                        <table class="modal-schedule-table" style="margin: 0;">
+                            <thead>
+                                <tr>
+                                    <th style="background: var(--bg-secondary);">Veckodag</th>
+                                    <th style="background: var(--bg-secondary);">Datum</th>
+                                    <th style="background: var(--bg-secondary);">Tid</th>
+                                    <th style="background: var(--bg-secondary);">Tjänst</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="modal-body" style="overflow-y: auto; flex: 1; padding-top: 0;">
+                        <table class="modal-schedule-table" style="margin: 0;">
+                            <tbody>
+                                ${entriesHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Close on overlay click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeEditScheduleModal();
+            });
+        }
+
+        function openEditTimeModal(personIndex, entryIndex) {
+            const entry = scheduleData.people[personIndex].entries[entryIndex];
+            // Parse existing time (format: "08:00-16:00")
+            let startTime = '';
+            let endTime = '';
+            if (entry.time) {
+                const parts = entry.time.split('-');
+                if (parts.length >= 1) startTime = parts[0].trim();
+                if (parts.length >= 2) endTime = parts[1].trim();
+            }
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay active';
+            modal.id = 'editFieldModal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 350px;">
+                    <div class="modal-header">
+                        <h2 class="modal-title" style="font-size: 1.1rem;">🕐 Ändra tid</h2>
+                        <button class="modal-close" onclick="closeEditFieldModal()">✕</button>
+                    </div>
+                    <div class="modal-body" style="padding: 1.5rem;">
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-secondary);">Starttid</label>
+                            <input type="time" id="editStartTime" value="${startTime}" style="width: 100%; padding: 0.75rem; border: 2px solid var(--border); border-radius: 10px; font-size: 16px; background: var(--bg-primary); color: var(--text-primary);">
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-secondary);">Sluttid</label>
+                            <input type="time" id="editEndTime" value="${endTime}" style="width: 100%; padding: 0.75rem; border: 2px solid var(--border); border-radius: 10px; font-size: 16px; background: var(--bg-primary); color: var(--text-primary);">
+                        </div>
+                        <button class="btn" style="width: 100%; margin: 0;" onclick="saveTimeEdit(${personIndex}, ${entryIndex})">Spara</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeEditFieldModal();
+            });
+        }
+
+        function openEditServiceModal(personIndex, entryIndex) {
+            const entry = scheduleData.people[personIndex].entries[entryIndex];
+            const currentService = entry.service || '';
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay active';
+            modal.id = 'editFieldModal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 350px;">
+                    <div class="modal-header">
+                        <h2 class="modal-title" style="font-size: 1.1rem;">🏷️ Ändra turnummer</h2>
+                        <button class="modal-close" onclick="closeEditFieldModal()">✕</button>
+                    </div>
+                    <div class="modal-body" style="padding: 1.5rem;">
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-secondary);">Turnummer</label>
+                            <input type="text" id="editServiceInput" value="${escapeHtml(currentService)}" placeholder="T.ex. T1, Fri, FV..." style="width: 100%; padding: 0.75rem; border: 2px solid var(--border); border-radius: 10px; font-size: 16px; background: var(--bg-primary); color: var(--text-primary);">
+                        </div>
+                        <button class="btn" style="width: 100%; margin: 0;" onclick="saveServiceEdit(${personIndex}, ${entryIndex})">Spara</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeEditFieldModal();
+            });
+
+            // Focus input
+            setTimeout(() => {
+                document.getElementById('editServiceInput').focus();
+            }, 100);
+        }
+
+        function closeEditFieldModal() {
+            const modal = document.getElementById('editFieldModal');
+            if (modal) modal.remove();
+        }
+
+        function saveTimeEdit(personIndex, entryIndex) {
+            const startTime = document.getElementById('editStartTime').value;
+            const endTime = document.getElementById('editEndTime').value;
+
+            let timeStr = '';
+            if (startTime && endTime) {
+                timeStr = `${startTime}-${endTime}`;
+            } else if (startTime) {
+                timeStr = startTime;
+            } else if (endTime) {
+                timeStr = endTime;
+            }
+
+            scheduleData.people[personIndex].entries[entryIndex].time = timeStr;
+            closeEditFieldModal();
+            closeEditScheduleModal();
+            openEditScheduleModal(personIndex);
+        }
+
+        function saveServiceEdit(personIndex, entryIndex) {
+            const newService = document.getElementById('editServiceInput').value.trim();
+            scheduleData.people[personIndex].entries[entryIndex].service = newService;
+            closeEditFieldModal();
+            closeEditScheduleModal();
+            openEditScheduleModal(personIndex);
+        }
+
+        function closeEditScheduleModal() {
+            const modal = document.getElementById('editScheduleModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        function confirmDeletePerson(personName) {
+            // Create confirmation modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay active';
+            modal.id = 'confirmModal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 400px;">
+                    <div class="modal-header">
+                        <h2 class="modal-title" style="font-size: 1.1rem;">⚠️ Bekräfta borttagning</h2>
+                        <button class="modal-close" onclick="closeConfirmModal()">✕</button>
+                    </div>
+                    <div class="modal-body" style="text-align: center; padding: 2rem;">
+                        <p style="margin-bottom: 1.5rem;">Är du säker på att du vill ta bort schemat för <strong>${escapeHtml(personName)}</strong>?</p>
+                        <div style="display: flex; gap: 1rem; justify-content: center;">
+                            <button class="reset-btn" onclick="closeConfirmModal()">Avbryt</button>
+                            <button class="btn" style="margin: 0; padding: 0.75rem 1.5rem;" onclick="deletePerson('${escapeHtml(personName).replace(/'/g, "\\'")}')">Ta bort</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirmModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        function deletePerson(personName) {
+            closeConfirmModal();
+            if (scheduleData && scheduleData.people) {
+                scheduleData.people = scheduleData.people.filter(p => p.name !== personName);
+                renderSchedulesList();
+            }
+        }
+
+        function clearAllSchedules() {
+            // Create confirmation modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay active';
+            modal.id = 'confirmModal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 400px;">
+                    <div class="modal-header">
+                        <h2 class="modal-title" style="font-size: 1.1rem;">⚠️ Rensa alla scheman</h2>
+                        <button class="modal-close" onclick="closeConfirmModal()">✕</button>
+                    </div>
+                    <div class="modal-body" style="text-align: center; padding: 2rem;">
+                        <p style="margin-bottom: 1.5rem;">Är du säker på att du vill ta bort <strong>alla</strong> scheman?</p>
+                        <div style="display: flex; gap: 1rem; justify-content: center;">
+                            <button class="reset-btn" onclick="closeConfirmModal()">Avbryt</button>
+                            <button class="btn" style="margin: 0; padding: 0.75rem 1.5rem;" onclick="confirmClearAll()">Rensa allt</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function confirmClearAll() {
+            closeConfirmModal();
+            scheduleData = null;
+            renderSchedulesList();
+        }
+
+        function parseStartTime(timeStr) {
+            if (!timeStr) return 9999;
+            // Extract start time from formats like "08:00-16:00" or "08:00"
+            const match = timeStr.match(/^(\d{1,2}):?(\d{2})?/);
+            if (match) {
+                const hours = parseInt(match[1], 10);
+                const minutes = match[2] ? parseInt(match[2], 10) : 0;
+                return hours * 60 + minutes;
+            }
+            return 9999;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function isServiceFree(service) {
+            if (!service) return false;
+            const s = service.toUpperCase().trim();
+            // Check for Fri, FV, FP2, FP-V, FPV
+            if (s === 'FRI' || s === 'FV' || s === 'FP2' || s === 'FP-V' || s === 'FPV') {
+                return true;
+            }
+            // Also check if service contains these patterns
+            if (s.includes('FV') || s.includes('FP2') || s.includes('FP-V') || s.includes('FPV')) {
+                return true;
+            }
+            return false;
+        }
+
+        function formatServiceDisplay(service) {
+            // If it's a free-type service, display as "Fri" with original code
+            if (isServiceFree(service)) {
+                const s = service.toUpperCase().trim();
+                if (s !== 'FRI') {
+                    return `Fri (${service})`;
+                }
+            }
+            return service;
+        }
+
+        function getServiceIcon(service) {
+            if (!service || isServiceFree(service)) {
+                return '';
+            }
+
+            const serviceUpper = service.toUpperCase().trim();
+
+            // Check for "Reserv" (alone or followed by a number) → "Extra reserv"
+            if (/^RESERV/i.test(serviceUpper)) {
+                return '<div class="service-icon icon-text">Extra<br>reserv</div>';
+            }
+
+            // Get characters from the service string (remove spaces)
+            const chars = serviceUpper.replace(/\s/g, '');
+
+            // Need at least 3 characters to check rules
+            if (chars.length >= 3) {
+                const thirdChar = chars[2];   // Position 3
+                const fourthChar = chars.length >= 4 ? chars[3] : '';  // Position 4
+                const sixthChar = chars.length >= 6 ? chars[5] : '';   // Position 6
+
+                // If 4th char is 8 → "Tåg reserv"
+                if (fourthChar === '8') {
+                    return '<div class="service-icon icon-text">Tåg<br>reserv</div>';
+                }
+
+                // If 4th char is 9 → "Reserv"
+                if (fourthChar === '9') {
+                    return '<div class="service-icon icon-text">Reserv</div>';
+                }
+
+                // If 6th char is A → "Dag 1" (torn at bottom)
+                if (sixthChar === 'A') {
+                    return '<div class="service-icon icon-dag1">Dag 1</div>';
+                }
+
+                // If 6th char is B → "Dag 2" (torn at top)
+                if (sixthChar === 'B') {
+                    return '<div class="service-icon icon-dag2">Dag 2</div>';
+                }
+
+                // Check if 3rd character is a digit for flag logic
+                if (/\d/.test(thirdChar)) {
+                    const digit = parseInt(thirdChar, 10);
+                    if (digit % 2 === 0) {
+                        // Even (0, 2, 4, 6) → Danish flag
+                        return '<div class="service-icon flag-denmark"></div>';
+                    } else {
+                        // Odd (1, 3, 5, 7, 9) → Swedish flag
+                        return '<div class="service-icon flag-sweden"></div>';
+                    }
+                }
+            }
+
+            return '';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+    </script>
+</body>
+</html>
