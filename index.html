@@ -1836,7 +1836,7 @@
                 <button type="button" class="login-btn" onclick="createPassword()">Skapa</button>
             </div>
 
-            <div class="version-text">Version 0.09</div>
+            <div class="version-text">Version 0.10</div>
         </div>
     </div>
 
@@ -1878,7 +1878,7 @@
                 Ladda upp schema
             </button>
         </div>
-        <div class="sidebar-version">Version 0.09</div>
+        <div class="sidebar-version">Version 0.10</div>
     </nav>
 
     <!-- Main Content -->
@@ -1975,7 +1975,7 @@
 
         // ============================================
         // APP VERSION
-        const APP_VERSION = '0.09';
+        const APP_VERSION = '0.10';
 
         // FIREBASE CONFIGURATION
         // ============================================
@@ -2580,8 +2580,8 @@
             // Or: "Måndag 2026-01-05 FV/FP2/FP-V FV/FP2/FP-V"
 
             // Match pattern: Weekday + Date (YYYY-MM-DD) + Service + optional Time
-            // Service can be: 5-digit number, FRIDAG, Reserv..., Semester, Frånvarande, or FV/FP/FP2/FP-V combinations
-            const rowPattern = /(måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag)\s+(\d{4}-\d{2}-\d{2})\s+(\*?\s*\d{4,5}[A-Z]?|FRIDAG|Semester|Frånvarande|Reserv\w*|(?:FV|FP\d?|FP-V)(?:\/(?:FV|FP\d?|FP-V))*)\s*(?:(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2}))?/gi;
+            // Service can be: 5-digit number, FRIDAG, Reserv..., Semester, Frånvarande, Föräldraledighet, AFD, or FV/FP/FP2/FP-V combinations
+            const rowPattern = /(måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag)\s+(\d{4}-\d{2}-\d{2})\s+(\*?\s*\d{4,5}[A-Z]?|FRIDAG|Semester|Frånvarande|Föräldraledighet|AFD|Reserv\w*|(?:FV|FP\d?|FP-V)(?:\/(?:FV|FP\d?|FP-V))*)\s*(?:(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2}))?/gi;
 
             let match;
             while ((match = rowPattern.exec(text)) !== null) {
@@ -2601,7 +2601,7 @@
                     time = `${startTime}-${endTime}`;
                 }
 
-                // Determine service display - distinguish between FP (FRIDAG), FPV (FV/FP2/FP-V), Semester, Frånvarande
+                // Determine service display - distinguish between FP (FRIDAG), FPV (FV/FP2/FP-V), Semester, Frånvarande, Föräldraledighet, AFD
                 let finalService = service;
                 const serviceUpper = service.toUpperCase();
                 if (serviceUpper === 'FRIDAG') {
@@ -2612,6 +2612,10 @@
                     finalService = 'Semester';
                 } else if (serviceUpper === 'FRÅNVARANDE') {
                     finalService = 'Frånvarande';
+                } else if (serviceUpper === 'FÖRÄLDRALEDIGHET') {
+                    finalService = 'Föräldraledighet';
+                } else if (serviceUpper === 'AFD') {
+                    finalService = 'AFD';
                 }
 
                 currentPerson.entries.push({
@@ -2625,7 +2629,7 @@
             // If no matches with the main pattern, try a more flexible approach
             if (currentPerson.entries.length === 0) {
                 // Fallback: Look for date patterns and times separately
-                const dateTimePattern = /(\d{4}-\d{2}-\d{2})\s+(\*?\s*\d{4,5}[A-Z]?|FRIDAG|Semester|Frånvarande|Reserv\w*|(?:FV|FP\d?|FP-V)(?:\/(?:FV|FP\d?|FP-V))*)\s*(?:(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2}))?/gi;
+                const dateTimePattern = /(\d{4}-\d{2}-\d{2})\s+(\*?\s*\d{4,5}[A-Z]?|FRIDAG|Semester|Frånvarande|Föräldraledighet|AFD|Reserv\w*|(?:FV|FP\d?|FP-V)(?:\/(?:FV|FP\d?|FP-V))*)\s*(?:(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2}))?/gi;
 
                 while ((match = dateTimePattern.exec(text)) !== null) {
                     const dateStr = match[1];
@@ -2656,6 +2660,10 @@
                         finalService = 'Semester';
                     } else if (serviceUpperFallback === 'FRÅNVARANDE') {
                         finalService = 'Frånvarande';
+                    } else if (serviceUpperFallback === 'FÖRÄLDRALEDIGHET') {
+                        finalService = 'Föräldraledighet';
+                    } else if (serviceUpperFallback === 'AFD') {
+                        finalService = 'AFD';
                     }
 
                     currentPerson.entries.push({
@@ -3466,7 +3474,17 @@
 
         function saveServiceEdit(personIndex, entryIndex) {
             const newService = document.getElementById('editServiceInput').value.trim();
-            scheduleData.people[personIndex].entries[entryIndex].service = newService;
+            const entry = scheduleData.people[personIndex].entries[entryIndex];
+            entry.service = newService;
+
+            // If service is changed to a free day type (FP, FPV, Fri, AFD), clear the time
+            const s = newService.toUpperCase();
+            if (s === 'FP' || s === 'FPV' || s === 'FRI' || s === 'AFD' ||
+                s === 'SEMESTER' || s === 'FRÅNVARANDE' || s === 'FÖRÄLDRALEDIGHET' ||
+                s.includes('FV') || s.includes('FP2') || s.includes('FP-V')) {
+                entry.time = '';
+            }
+
             saveToLocalStorage();
             closeEditFieldModal();
             closeEditScheduleModal();
@@ -3586,9 +3604,9 @@
         function isServiceFree(service) {
             if (!service) return false;
             const s = service.toUpperCase().trim();
-            // Check for FP (FRIDAG), FPV (FV/FP2/FP-V), Semester, Frånvarande, or legacy Fri
+            // Check for FP (FRIDAG), FPV (FV/FP2/FP-V), Semester, Frånvarande, Föräldraledighet, AFD, or legacy Fri
             if (s === 'FP' || s === 'FPV' || s === 'FRI' || s === 'FV' || s === 'FP2' || s === 'FP-V' || s === 'FRIDAG' ||
-                s === 'SEMESTER' || s === 'FRÅNVARANDE') {
+                s === 'SEMESTER' || s === 'FRÅNVARANDE' || s === 'FÖRÄLDRALEDIGHET' || s === 'AFD') {
                 return true;
             }
             // Also check if service contains these patterns
@@ -3609,8 +3627,8 @@
             if (s === 'FPV') {
                 return 'FPV';
             }
-            // Semester and Frånvarande display as "Fri" on "Vem jobbar idag?"
-            if (s === 'SEMESTER' || s === 'FRÅNVARANDE') {
+            // Semester, Frånvarande, Föräldraledighet, AFD display as "Fri" on "Vem jobbar idag?"
+            if (s === 'SEMESTER' || s === 'FRÅNVARANDE' || s === 'FÖRÄLDRALEDIGHET' || s === 'AFD') {
                 return 'Fri';
             }
             // Legacy support for old data
